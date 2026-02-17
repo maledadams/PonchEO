@@ -1,0 +1,242 @@
+{
+  "info": {
+    "_postman_id": "5f03f7e8-7f42-4be6-b06d-b9e487a31a7a",
+    "name": "PonchEO API",
+    "description": "Postman collection for PonchEO backend APIs.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /api/health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "health"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST /api/auth/login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json?.data?.token) {",
+                  "  pm.environment.set('token', json.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"supervisor@poncheo.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "GET /api/auth/me",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Employees",
+      "item": [
+        {
+          "name": "GET /api/employees",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees?includeInactive=false",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "employees"],
+              "query": [
+                { "key": "includeInactive", "value": "false" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Punches",
+      "item": [
+        {
+          "name": "POST /api/punches/clock-in",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/punches/clock-in",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "punches", "clock-in"]
+            }
+          }
+        },
+        {
+          "name": "POST /api/punches/clock-out",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/punches/clock-out",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "punches", "clock-out"]
+            }
+          }
+        },
+        {
+          "name": "GET /api/punches",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/punches",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "punches"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Corrections",
+      "item": [
+        {
+          "name": "POST /api/corrections",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"punchId\": 1,\n  \"correctedClockIn\": \"2026-02-16T08:00:00.000Z\",\n  \"correctedClockOut\": \"2026-02-16T16:00:00.000Z\",\n  \"reason\": \"Forgot to clock out\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/corrections",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "corrections"]
+            }
+          }
+        },
+        {
+          "name": "GET /api/corrections",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/corrections",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "corrections"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payroll",
+      "item": [
+        {
+          "name": "POST /api/payroll/generate",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"periodStart\": \"2026-02-09\",\n  \"periodEnd\": \"2026-02-15\",\n  \"periodType\": \"WEEKLY\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payroll/generate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payroll", "generate"]
+            }
+          }
+        },
+        {
+          "name": "GET /api/payroll",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payroll",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payroll"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Jobs",
+      "item": [
+        {
+          "name": "POST /api/jobs/auto-close",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-cron-secret", "value": "{{cronSecret}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/jobs/auto-close",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "jobs", "auto-close"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

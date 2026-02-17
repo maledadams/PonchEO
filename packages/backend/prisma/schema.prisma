@@ -1,0 +1,276 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  EMPLOYEE
+  SUPERVISOR
+}
+
+enum ShiftType {
+  DIURNA   // Day: 7:00 AM - 9:00 PM
+  NOCTURNA // Night: 9:00 PM - 7:00 AM (15% premium)
+  MIXTA    // Mixed: crosses day/night boundary
+}
+
+enum PunchStatus {
+  OPEN        // Clocked in, not yet clocked out
+  CLOSED      // Normal clock-out
+  AUTO_CLOSED // System closed (forgot to punch out)
+  CORRECTED   // Supervisor approved a correction
+}
+
+enum CorrectionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ApprovalDecision {
+  APPROVED
+  REJECTED
+}
+
+enum TimesheetStatus {
+  DRAFT     // Auto-calculated, not yet finalized
+  FINALIZED // Locked for payroll
+}
+
+enum PeriodType {
+  WEEKLY
+  BIWEEKLY
+}
+
+enum PayrollStatus {
+  DRAFT
+  FINALIZED
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model Department {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employees Employee[]
+
+  @@map("departments")
+}
+
+model Employee {
+  id           Int      @id @default(autoincrement())
+  employeeCode String   @unique @map("employee_code") // e.g., "EMP-001"
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role     @default(EMPLOYEE)
+  departmentId Int?     @map("department_id")
+  hireDate     DateTime @map("hire_date")
+  hourlyRate   Decimal  @map("hourly_rate") @db.Decimal(10, 2)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  department       Department?       @relation(fields: [departmentId], references: [id])
+  shiftAssignments ShiftAssignment[]
+  punches          Punch[]
+  corrections      Correction[]      // Corrections requested BY this employee
+  approvals        Approval[]        // Approvals made BY this supervisor
+  payrollSummaries PayrollSummary[]
+  dailyTimesheets  DailyTimesheet[]
+
+  @@map("employees")
+}
+
+model ShiftTemplate {
+  id                 Int       @id @default(autoincrement())
+  name               String    @unique // e.g., "Morning", "Night", "Rotating A"
+  startTime          String    @map("start_time") // "HH:mm" format, e.g., "08:00"
+  endTime            String    @map("end_time")   // "HH:mm" format, e.g., "16:00"
+  shiftType          ShiftType @map("shift_type")
+  breakMinutes       Int       @default(60) @map("break_minutes")
+  gracePeriodMinutes Int       @default(10) @map("grace_period_minutes")
+  isActive           Boolean   @default(true) @map("is_active")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  shiftAssignments ShiftAssignment[]
+
+  @@map("shift_templates")
+}
+
+model ShiftAssignment {
+  id              Int      @id @default(autoincrement())
+  employeeId      Int      @map("employee_id")
+  shiftTemplateId Int      @map("shift_template_id")
+  date            DateTime @db.Date // The specific day this assignment is for
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  employee      Employee      @relation(fields: [employeeId], references: [id])
+  shiftTemplate ShiftTemplate @relation(fields: [shiftTemplateId], references: [id])
+  punches       Punch[]
+
+  @@unique([employeeId, date]) // One shift per employee per day
+  @@map("shift_assignments")
+}
+
+model Punch {
+  id                Int         @id @default(autoincrement())
+  employeeId        Int         @map("employee_id")
+  shiftAssignmentId Int?        @map("shift_assignment_id")
+  clockIn           DateTime    @map("clock_in")
+  clockOut          DateTime?   @map("clock_out") // NULL = still clocked in
+  isAutoCompleted   Boolean     @default(false) @map("is_auto_completed")
+  tardinessMinutes  Int         @default(0) @map("tardiness_minutes")
+  workedMinutes     Int?        @map("worked_minutes") // Calculated on clock-out
+  status            PunchStatus @default(OPEN)
+  notes             String?
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  employee        Employee         @relation(fields: [employeeId], references: [id])
+  shiftAssignment ShiftAssignment? @relation(fields: [shiftAssignmentId], references: [id])
+  correction      Correction?
+
+  @@index([employeeId, clockIn])
+  @@index([status])
+  @@map("punches")
+}
+
+model Correction {
+  id               Int              @id @default(autoincrement())
+  punchId          Int              @unique @map("punch_id") // One correction per punch
+  requestedById    Int              @map("requested_by_id")
+  reason           String           // Required: why the correction is needed
+  originalClockIn  DateTime         @map("original_clock_in")
+  originalClockOut DateTime?        @map("original_clock_out")
+  correctedClockIn DateTime         @map("corrected_clock_in")
+  correctedClockOut DateTime?       @map("corrected_clock_out")
+  status           CorrectionStatus @default(PENDING)
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  punch       Punch     @relation(fields: [punchId], references: [id])
+  requestedBy Employee  @relation(fields: [requestedById], references: [id])
+  approval    Approval?
+
+  @@map("corrections")
+}
+
+model Approval {
+  id           Int              @id @default(autoincrement())
+  correctionId Int              @unique @map("correction_id")
+  supervisorId Int              @map("supervisor_id")
+  decision     ApprovalDecision
+  comments     String?
+  decidedAt    DateTime         @default(now()) @map("decided_at")
+
+  correction Correction @relation(fields: [correctionId], references: [id])
+  supervisor Employee   @relation(fields: [supervisorId], references: [id])
+
+  @@map("approvals")
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  action     String   // "CREATE" | "UPDATE" | "DELETE"
+  entityType String   @map("entity_type") // "Punch" | "Employee" | etc.
+  entityId   Int      @map("entity_id")
+  oldValues  Json?    @map("old_values") @db.JsonB // Previous state (null for CREATE)
+  newValues  Json?    @map("new_values") @db.JsonB // New state (null for DELETE)
+  ipAddress  String?  @map("ip_address")
+  timestamp  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([timestamp])
+  @@map("audit_logs")
+}
+
+model Holiday {
+  id          Int      @id @default(autoincrement())
+  date        DateTime @unique @db.Date
+  name        String
+  isRecurring Boolean  @default(false) @map("is_recurring")
+  year        Int?     // null if recurring, specific year if one-time
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("holidays")
+}
+
+model OvertimeRule {
+  id               Int     @id @default(autoincrement())
+  name             String  @unique
+  description      String
+  thresholdMinutes Int?    @map("threshold_minutes") // e.g., 2640 (44h) for standard OT
+  maxMinutes       Int?    @map("max_minutes")       // e.g., 4080 (68h) for excessive OT
+  multiplier       Decimal @db.Decimal(4, 2)         // e.g., 1.35, 2.00
+  isActive         Boolean @default(true) @map("is_active")
+  priority         Int     @default(0)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("overtime_rules")
+}
+
+model DailyTimesheet {
+  id                 Int             @id @default(autoincrement())
+  employeeId         Int             @map("employee_id")
+  date               DateTime        @db.Date
+  totalWorkedMinutes Int             @default(0) @map("total_worked_minutes")
+  regularMinutes     Int             @default(0) @map("regular_minutes")
+  overtimeMinutes    Int             @default(0) @map("overtime_minutes")
+  nightMinutes       Int             @default(0) @map("night_minutes")
+  tardinessMinutes   Int             @default(0) @map("tardiness_minutes")
+  isHoliday          Boolean         @default(false) @map("is_holiday")
+  isRestDay          Boolean         @default(false) @map("is_rest_day")
+  status             TimesheetStatus @default(DRAFT)
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, date])
+  @@index([date])
+  @@map("daily_timesheets")
+}
+
+model PayrollSummary {
+  id                    Int           @id @default(autoincrement())
+  employeeId            Int           @map("employee_id")
+  periodStart           DateTime      @map("period_start") @db.Date
+  periodEnd             DateTime      @map("period_end") @db.Date
+  periodType            PeriodType    @map("period_type")
+  totalWorkedMinutes    Int           @map("total_worked_minutes")
+  regularMinutes        Int           @map("regular_minutes")
+  overtimeMinutes       Int           @map("overtime_minutes")
+  nightMinutes          Int           @map("night_minutes")
+  holidayMinutes        Int           @map("holiday_minutes")
+  totalTardinessMinutes Int           @map("total_tardiness_minutes")
+  regularPay            Decimal       @map("regular_pay") @db.Decimal(10, 2)
+  overtimePay           Decimal       @map("overtime_pay") @db.Decimal(10, 2)
+  nightPremiumPay       Decimal       @map("night_premium_pay") @db.Decimal(10, 2)
+  holidayPay            Decimal       @map("holiday_pay") @db.Decimal(10, 2)
+  grossPay              Decimal       @map("gross_pay") @db.Decimal(10, 2)
+  status                PayrollStatus @default(DRAFT)
+  generatedAt           DateTime      @default(now()) @map("generated_at")
+  generatedById         Int           @map("generated_by_id")
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, periodStart, periodEnd])
+  @@index([periodStart, periodEnd])
+  @@map("payroll_summaries")
+}
