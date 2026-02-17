@@ -44,6 +44,34 @@ router.post('/generate', validate(generatePayrollSchema), payrollController.gene
 
 /**
  * @swagger
+ * /payroll/export/csv:
+ *   get:
+ *     summary: Export payroll summaries as CSV
+ *     tags: [Payroll]
+ *     parameters:
+ *       - in: query
+ *         name: periodStart
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: periodEnd
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [DRAFT, FINALIZED]
+ *     responses:
+ *       200:
+ *         description: CSV file
+ */
+router.get('/export/csv', validateQuery(payrollQuerySchema), payrollController.exportCsv);
+
+/**
+ * @swagger
  * /payroll:
  *   get:
  *     summary: List payroll summaries

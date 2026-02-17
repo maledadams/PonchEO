@@ -193,6 +193,65 @@ export async function findAll(filters: {
   });
 }
 
+export async function exportCsv(filters: {
+  periodStart?: string;
+  periodEnd?: string;
+  status?: string;
+}) {
+  const summaries = await findAll(filters);
+  type SummaryRow = Awaited<ReturnType<typeof findAll>>[number];
+
+  const headers = [
+    'employeeCode',
+    'employeeName',
+    'department',
+    'periodStart',
+    'periodEnd',
+    'status',
+    'totalWorkedMinutes',
+    'regularMinutes',
+    'overtimeMinutes',
+    'nightMinutes',
+    'holidayMinutes',
+    'totalTardinessMinutes',
+    'regularPay',
+    'overtimePay',
+    'nightPremiumPay',
+    'holidayPay',
+    'grossPay',
+  ];
+
+  const rows: Array<Array<string | number>> = summaries.map((summary: SummaryRow) => {
+    const employeeName = `${summary.employee.firstName} ${summary.employee.lastName}`.trim();
+    return [
+      summary.employee.employeeCode,
+      employeeName,
+      summary.employee.department?.name || '',
+      summary.periodStart.toISOString().slice(0, 10),
+      summary.periodEnd.toISOString().slice(0, 10),
+      summary.status,
+      summary.totalWorkedMinutes,
+      summary.regularMinutes,
+      summary.overtimeMinutes,
+      summary.nightMinutes,
+      summary.holidayMinutes,
+      summary.totalTardinessMinutes,
+      Number(summary.regularPay).toFixed(2),
+      Number(summary.overtimePay).toFixed(2),
+      Number(summary.nightPremiumPay).toFixed(2),
+      Number(summary.holidayPay).toFixed(2),
+      Number(summary.grossPay).toFixed(2),
+    ];
+  });
+
+  const csvLines = [
+    headers.join(','),
+    ...rows.map((row: Array<string | number>) => row.map(csvEscape).join(',')),
+  ];
+
+  return csvLines.join('\n');
+}
+
 export async function findById(id: number) {
   const summary = await prisma.payrollSummary.findUnique({
     where: { id },
@@ -225,4 +284,12 @@ export async function revert(id: number) {
     where: { id },
     data: { status: 'DRAFT' },
   });
+}
+
+function csvEscape(value: unknown): string {
+  const str = value == null ? '' : String(value);
+  if (/[",\n]/.test(str)) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
 }

@@ -34,6 +34,27 @@ export async function findById(req: Request, res: Response, next: NextFunction) 
   }
 }
 
+export async function exportCsv(req: Request, res: Response, next: NextFunction) {
+  try {
+    const filters = {
+      periodStart: req.query.periodStart as string | undefined,
+      periodEnd: req.query.periodEnd as string | undefined,
+      status: req.query.status as string | undefined,
+    };
+
+    const csv = await payrollService.exportCsv(filters);
+    const startLabel = filters.periodStart || 'all';
+    const endLabel = filters.periodEnd || 'all';
+    const fileName = `payroll-${startLabel}-${endLabel}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.status(200).send(csv);
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function finalize(req: Request, res: Response, next: NextFunction) {
   try {
     const summary = await payrollService.finalize(Number(req.params.id));

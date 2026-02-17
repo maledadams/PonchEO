@@ -41,6 +41,7 @@ Swagger: `http://localhost:3000/api-docs`
 - `GET /api/daily-timesheets`
 - `POST /api/payroll/generate` (supervisor)
 - `GET /api/payroll` (supervisor)
+- `GET /api/payroll/export/csv` (supervisor)
 - `GET /api/payroll/:id` (supervisor)
 - `PUT /api/payroll/:id/finalize` (supervisor)
 - `PUT /api/payroll/:id/revert` (supervisor)
