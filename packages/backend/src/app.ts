@@ -55,16 +55,24 @@ app.use('/api/dashboard', dashboardRoutes);
 app.post('/api/jobs/auto-close', async (req, res, next) => {
   try {
     const providedSecretHeader = req.headers['x-cron-secret'];
-    const providedSecret =
-      typeof providedSecretHeader === 'string' ? providedSecretHeader : undefined;
+    const providedSecret = typeof providedSecretHeader === 'string' ? providedSecretHeader : undefined;
+    const authorizationHeader = req.headers.authorization;
+    const bearerToken =
+      typeof authorizationHeader === 'string' && authorizationHeader.startsWith('Bearer ')
+        ? authorizationHeader.slice('Bearer '.length).trim()
+        : undefined;
     const expectedSecret = env.CRON_SECRET;
 
-    if (!expectedSecret || providedSecret !== expectedSecret) {
+    const isAuthorized =
+      !!expectedSecret &&
+      (providedSecret === expectedSecret || bearerToken === expectedSecret);
+
+    if (!isAuthorized) {
       return res.status(401).json({
         success: false,
         error: {
           code: 'UNAUTHORIZED',
-          message: 'Invalid cron secret',
+          message: 'Invalid cron credentials',
         },
       });
     }
