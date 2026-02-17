@@ -15,6 +15,8 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   isSupervisor: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -30,6 +32,14 @@ const mockUser: User = {
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const login = async (email: string, password: string) => {
+    // No-op: auth removed
+  };
+
+  const logout = () => {
+    // No-op: auth removed
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -37,6 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         token: 'demo-token',
         isLoading: false,
         isSupervisor: true,
+        login,
+        logout,
       }}
     >
       {children}

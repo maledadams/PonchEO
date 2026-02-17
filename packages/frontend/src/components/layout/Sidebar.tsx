@@ -17,7 +17,7 @@ const navItems = {
 };
 
 export default function Sidebar() {
-  const { user, logout, isSupervisor } = useAuth();
+  const { user, isSupervisor } = useAuth();
   const location = useLocation();
 
   const items = [...navItems.all, ...(isSupervisor ? navItems.supervisor : [])];
@@ -47,14 +47,10 @@ export default function Sidebar() {
 
       <div className="p-4 border-t border-base-300">
         <div className="text-sm">
-          <p className="font-medium">
-            {user?.firstName} {user?.lastName}
-          </p>
+          <p className="font-medium">{user?.firstName} {user?.lastName}</p>
+          <p className="text-xs opacity-60">{user?.email}</p>
           <p className="opacity-70">{user?.role === 'SUPERVISOR' ? 'Supervisor' : 'Empleado'}</p>
         </div>
-        <button onClick={logout} className="btn btn-ghost btn-sm mt-2 w-full">
-          Cerrar Sesión
-        </button>
       </div>
     </div>
   );
