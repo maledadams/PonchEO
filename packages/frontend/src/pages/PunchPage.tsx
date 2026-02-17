@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
 import { mockPunches } from '../data/mockData';
 
 export default function PunchPage() {
